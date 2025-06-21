@@ -3,7 +3,7 @@
 # Set up paths and log
 mkdir -p "$HOME/hillbillyer"
 LOGFILE="$HOME/hillbillyer/ubuntu-updates.log"
-NTFY_TOPIC="https://ntfy.hillbillyer.dev/ubuntu-update"
+NTFY_TOPIC="https://ntfy.hillbillyer.dev/machine-updates"
 
 # Create a temp file to capture errors
 ERRFILE=$(mktemp)
