@@ -1,19 +1,18 @@
 #!/bin/bash
 
-# Set up paths and log
+# Define variables
 mkdir -p "$HOME/hillbillyer"
 LOGFILE="$HOME/hillbillyer/ubuntu-updates.log"
-NTFY_TOPIC="https://ntfy.hillbillyer.dev/machine-updates"
-
-# Create a temp file to capture errors
 ERRFILE=$(mktemp)
+NTFY_TOPIC="https://ntfy.hillbillyer.dev/machine-updates"
+HOSTNAME=$(hostname)
 
 {
     echo "===== $(date '+%Y-%m-%d %H:%M:%S') ====="
-    echo "Running apt update && full-upgrade"
+    echo "Running apt update && full-upgrade on $HOSTNAME"
 } >> "$LOGFILE"
 
-# Run updates and capture errors
+# Run update steps
 {
     apt update
     apt list --upgradable
@@ -22,21 +21,20 @@ ERRFILE=$(mktemp)
     apt clean
 } >> "$LOGFILE" 2>>"$ERRFILE"
 
-# Check exit status of the last command group
+# Check if any part failed
 if [ $? -eq 0 ]; then
-    MESSAGE="✅ Ubuntu update successful"
-    curl -s -X POST -H "Title: Ubuntu Update" -d "$MESSAGE" "$NTFY_TOPIC" >/dev/null
+    MESSAGE="✅ $HOSTNAME updated successfully."
+    curl -s -X POST -H "Title: Server Update" -d "$MESSAGE" "$NTFY_TOPIC" >/dev/null
 else
     ERROR_MSG=$(<"$ERRFILE")
-    MESSAGE="❌ Ubuntu update failed: $ERROR_MSG"
-    curl -s -X POST -H "Title: Ubuntu Update Failed" -d "$MESSAGE" "$NTFY_TOPIC" >/dev/null
+    MESSAGE="❌ $HOSTNAME update failed: $ERROR_MSG"
+    curl -s -X POST -H "Title: Server Update" -d "$MESSAGE" "$NTFY_TOPIC" >/dev/null
 fi
 
-# Append status to log
+# Append outcome to log
 {
     echo "$MESSAGE"
     echo ""
 } >> "$LOGFILE"
 
-# Clean up
 rm -f "$ERRFILE"
