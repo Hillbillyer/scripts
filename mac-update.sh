@@ -4,14 +4,15 @@
 # - Lists only versions >= your current macOS.
 # - Shows details (Title/Build/Size) in footer.
 # - On major upgrades, robustly fetches the installer (tries version & build)
-#   and then runs startosinstall.
+#   using ONLY valid "softwareupdate --fetch-full-installer" forms,
+#   then runs startosinstall.
 
 set -euo pipefail
 export LC_ALL=C
 
 # --- normalize versions into X.Y.Z ---
 normalize_ver() {
-  local v="${1//[^0-9.]/}"   # strip non-numeric/dots
+  local v="${1//[^0-9.]/}"
   local -a p
   p=(${(s/./)v})
   printf "%d.%d.%d" "${p[1]:-0}" "${p[2]:-0}" "${p[3]:-0}"
@@ -29,11 +30,11 @@ version_cmp() {
   done
   echo 0
 }
-version_ge() { [[ "$(version_cmp "$1" "$2")" != "-1" ]]; }  # v1 >= v2 ?
-version_gt() { [[ "$(version_cmp "$1" "$2")" == "1"  ]]; }  # v1 >  v2 ?
+version_ge() { [[ "$(version_cmp "$1" "$2")" != "-1" ]]; }
+version_gt() { [[ "$(version_cmp "$1" "$2")" == "1"  ]]; }
 
 # Current OS version
-current_version_raw=$(sw_vers -productVersion)        # e.g. 15.7.1
+current_version_raw=$(sw_vers -productVersion)
 current_version=$(normalize_ver "$current_version_raw")
 
 autoload -Uz colors && colors
@@ -71,7 +72,6 @@ typeset -a versions versions_norm titles builds sizes
 for row in "${(@f)parsed}"; do
   IFS=$'\t' read -r v t b s <<< "$row"
   [[ -n "$v" ]] || continue
-  # Filter out anything older than current
   if ! version_ge "$v" "$current_version"; then
     continue
   fi
@@ -79,7 +79,7 @@ for row in "${(@f)parsed}"; do
   versions_norm+=("$(normalize_ver "$v")")
   titles+=("$t")
   builds+=("$b")
-  sizes+=("$s")   # e.g., 16550558KiB
+  sizes+=("$s")
 done
 (( ${#versions[@]} == 0 )) && { echo "No versions ≥ current ($current_version_raw)."; exit 1; }
 
@@ -129,6 +129,10 @@ draw() {
 }
 
 # --- robust fetch helpers ---
+# Use ONLY valid forms of "softwareupdate --fetch-full-installer":
+#   --full-installer-version <ver>
+#   --productVersion <ver>
+#   --productBuildVersion <build>
 fetch_installer() {
   local ver="$1" build="$2"
   local got="" rc=1
@@ -150,7 +154,7 @@ fetch_installer() {
   if (( rc != 0 )) && /usr/sbin/softwareupdate --help 2>&1 | grep -q -- '--productBuildVersion'; then
     if [[ -n "$build" ]]; then
       echo "Trying build-based fetch (${build})..."
-      if sudo /usr/sbin/softwareupdate --fetch-installer --productBuildVersion "$build"; then
+      if sudo /usr/sbin/softwareupdate --fetch-full-installer --productBuildVersion "$build"; then
         got="--productBuildVersion"; rc=0
       fi
     fi
@@ -210,10 +214,11 @@ selected_major="${${(s/./)selected_version_norm}[1]}"
 current_major="${${(s/./)current_version}[1]}"
 
 if [[ "$selected_major" == "$current_major" ]]; then
-  print -P "%F{yellow}Minor update to $selected_version...%f"
-  sudo /usr/sbin/softwareupdate --install --all --force --restart
+  print -P "%F{green}Minor/point update to $selected_version...%f"
+  # Uncomment to perform minor update:
+  # sudo /usr/sbin/softwareupdate --install --all --force --restart
 else
-  print -P "%F{yellow}Major upgrade to $selected_version...%f"
+  print -P "%F{cyan}Major upgrade to $selected_version...%f"
 
   if ! fetch_installer "$selected_version" "$selected_build"; then
     print -P "%F{red}Install failed: Apple catalog returned 'Update not found' for version $selected_version (build $selected_build).%f"
