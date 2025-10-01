@@ -177,7 +177,9 @@ else
   fi
 
   # Headless, safe: prompts at terminal for the admin password
+  current_user=$(stat -f%Su /dev/console)
+
   sudo "$installer_app/Contents/Resources/startosinstall" \
     --agreetolicense --nointeraction --rebootdelay 10 --forcequitapps \
-    --user dadmin --passprompt
+    --user "$current_user" --passprompt
 fi
