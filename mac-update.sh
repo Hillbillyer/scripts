@@ -1,24 +1,19 @@
 #!/bin/zsh
 # Interactive arrow-key menu for choosing a macOS full installer version.
-# Works on Apple Silicon & Intel. No external deps (stock macOS tools only).
-# - Lists only versions >= your current macOS.
-# - Shows details (Title/Build/Size) in footer.
-# - On major upgrades, robustly fetches the installer (tries version & build)
-#   using ONLY valid "softwareupdate --fetch-full-installer" forms,
-#   then runs startosinstall.
+# Works on Apple Silicon & Intel, no extra deps.
 
 set -euo pipefail
 export LC_ALL=C
 
 # --- normalize versions into X.Y.Z ---
 normalize_ver() {
-  local v="${1//[^0-9.]/}"
+  local v="${1//[^0-9.]/}"   # strip non-numeric/dots
   local -a p
   p=(${(s/./)v})
   printf "%d.%d.%d" "${p[1]:-0}" "${p[2]:-0}" "${p[3]:-0}"
 }
 
-# --- compare versions: prints 1 if v1>v2, 0 if equal, -1 if v1<v2 ---
+# --- compare versions: returns 1 if v1>v2, 0 if equal, -1 if v1<v2 ---
 version_cmp() {
   local v1="$(normalize_ver "$1")"
   local v2="$(normalize_ver "$2")"
@@ -33,7 +28,7 @@ version_cmp() {
 version_ge() { [[ "$(version_cmp "$1" "$2")" != "-1" ]]; }
 version_gt() { [[ "$(version_cmp "$1" "$2")" == "1"  ]]; }
 
-# Current OS version
+# --- current version ---
 current_version_raw=$(sw_vers -productVersion)
 current_version=$(normalize_ver "$current_version_raw")
 
@@ -50,12 +45,11 @@ if [[ -t 0 && -t 1 ]]; then
   stty -echo -icanon min 1 time 0
 fi
 
-# --- fetch list once ---
+# --- fetch list ---
 raw=$(/usr/sbin/softwareupdate --list-full-installers 2>/dev/null)
 lines=("${(@f)$(printf "%s\n" "$raw" | grep -E '^\* Title: ')}")
-(( ${#lines[@]} == 0 )) && { echo "No macOS full installers found."; exit 1; }
+(( ${#lines[@]} == 0 )) && { echo "No installers found."; exit 1; }
 
-# Parse into TSV: version \t title \t build \t sizeKiB
 parsed=$(
   printf "%s\n" "${lines[@]}" | /usr/bin/awk '
   /^\* Title:/ {
@@ -81,9 +75,8 @@ for row in "${(@f)parsed}"; do
   builds+=("$b")
   sizes+=("$s")
 done
-(( ${#versions[@]} == 0 )) && { echo "No versions ≥ current ($current_version_raw)."; exit 1; }
+(( ${#versions[@]} == 0 )) && { echo "No newer/equal versions found."; exit 1; }
 
-# KiB -> GiB (two decimals)
 human_gib() {
   local in="$1" n
   [[ "$in" == *KiB ]] && n="${in%KiB}" || n="$in"
@@ -99,7 +92,10 @@ min_visible=5; visible=$(( LINES - 6 ))
 (( visible > count )) && visible=$count
 start=1
 
-make_divider() { printf '%*s' "$COLUMNS" '' | tr ' ' '-'; }
+make_divider() {
+  # nice clean ASCII divider
+  printf '%*s' "$COLUMNS" '' | tr ' ' '-'
+}
 
 draw() {
   clear_screen
@@ -128,52 +124,6 @@ draw() {
   print -P "%F{yellow}Version:%f ${versions[pos]}   %F{yellow}Title:%f ${titles[pos]}   %F{yellow}Build:%f ${builds[pos]}   %F{yellow}Size:%f ${sg}"
 }
 
-# --- robust fetch helpers ---
-# Use ONLY valid forms of "softwareupdate --fetch-full-installer":
-#   --full-installer-version <ver>
-#   --productVersion <ver>
-#   --productBuildVersion <build>
-fetch_installer() {
-  local ver="$1" build="$2"
-  local got="" rc=1
-
-  echo "Attempting to fetch full installer for version ${ver}..."
-
-  if /usr/sbin/softwareupdate --help 2>&1 | grep -q -- '--full-installer-version'; then
-    if sudo /usr/sbin/softwareupdate --fetch-full-installer --full-installer-version "$ver"; then
-      got="--full-installer-version"; rc=0
-    fi
-  fi
-
-  if (( rc != 0 )) && /usr/sbin/softwareupdate --help 2>&1 | grep -q -- '--productVersion'; then
-    if sudo /usr/sbin/softwareupdate --fetch-full-installer --productVersion "$ver"; then
-      got="--productVersion"; rc=0
-    fi
-  fi
-
-  if (( rc != 0 )) && /usr/sbin/softwareupdate --help 2>&1 | grep -q -- '--productBuildVersion'; then
-    if [[ -n "$build" ]]; then
-      echo "Trying build-based fetch (${build})..."
-      if sudo /usr/sbin/softwareupdate --fetch-full-installer --productBuildVersion "$build"; then
-        got="--productBuildVersion"; rc=0
-      fi
-    fi
-  fi
-
-  if (( rc != 0 )); then
-    echo "❌ Update not found for version ${ver} (build ${build})."
-    return 1
-  fi
-
-  echo "✅ Fetched via ${got}"
-  return 0
-}
-
-find_installer_app() {
-  ls -1t /Applications/Install\ macOS*.app 2>/dev/null | head -n1
-}
-
-# --- interactive loop ---
 hide_cursor
 while true; do
   draw
@@ -188,22 +138,22 @@ while true; do
       if [[ "$key2" == "[" ]]; then
         read -k 1 -t 0.05 key3 || key3=""
         case "$key3" in
-          A) (( pos > 1 )) && (( pos-- )) ;;  # up
-          B) (( pos < count )) && (( pos++ )) ;;  # down
-          H) pos=1 ;; F) pos=$count ;;
+          A) (( pos > 1 )) && (( pos-- )) ;;
+          B) (( pos < count )) && (( pos++ )) ;;
+          H) pos=1 ;;
+          F) pos=$count ;;
         esac
-      fi ;;
+      fi
+      ;;
   esac
 done
-show_cursor
 
-# Final selection
+show_cursor
 selected_version="${versions[pos]}"
 selected_version_norm="${versions_norm[pos]}"
-selected_build="${builds[pos]}"
 echo "$selected_version"
 
-# Final sanity check (normalized compare)
+# Final sanity check
 if ! version_ge "$selected_version" "$current_version"; then
   print -P "%F{red}Selected version ($selected_version) is older than current ($current_version_raw). Aborting.%f"
   exit 3
@@ -214,24 +164,10 @@ selected_major="${${(s/./)selected_version_norm}[1]}"
 current_major="${${(s/./)current_version}[1]}"
 
 if [[ "$selected_major" == "$current_major" ]]; then
-  print -P "%F{green}Minor/point update to $selected_version...%f"
-  sudo /usr/sbin/softwareupdate --install --all --force --restart
+  print -P "%F{green}Minor update to $selected_version...%f"
+  sudo softwareupdate --install --all --force --restart
 else
   print -P "%F{cyan}Major upgrade to $selected_version...%f"
-
-  if ! fetch_installer "$selected_version" "$selected_build"; then
-    print -P "%F{red}Install failed: Apple catalog returned 'Update not found' for version $selected_version (build $selected_build).%f"
-    print -P "%F{yellow}Tips:%f Ensure this Mac model is supported for ${selected_version}, try again later, or on another network/catalog."
-    exit 10
-  fi
-
-  installer_app="$(find_installer_app)"
-  if [[ -z "${installer_app}" ]]; then
-    print -P "%F{red}Installer app not found in /Applications after fetch.%f"
-    exit 11
-  fi
-
-  print -P "%F{green}Launching startosinstall from:%f $installer_app"
-  sudo "$installer_app/Contents/Resources/startosinstall" \
-    --agreetolicense --nointeraction --rebootdelay 10 --forcequitapps
+  sudo softwareupdate --fetch-full-installer --full-installer-version "$selected_version"
+  sudo "/Applications/Install macOS"*/Contents/Resources/startosinstall --agreetolicense --nointeraction --rebootdelay 10 --forcequitapps
 fi
