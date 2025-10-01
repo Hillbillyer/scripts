@@ -170,5 +170,5 @@ else
   print -P "%F{cyan}Major upgrade to $selected_version...%f"
   sudo softwareupdate --fetch-full-installer --full-installer-version "$selected_version"
   current_user=$(stat -f%Su /dev/console)
-  sudo "/Applications/Install macOS"*/Contents/Resources/startosinstall --agreetolicense --nointeraction --rebootdelay 10 --forcequitapps --user "$current_user" --passprompt
+  sudo /Applications/Install\ macOS\ *.app/Contents/Resources/startosinstall --agreetolicense --nointeraction --rebootdelay 10 --forcequitapps --user "$current_user" --passprompt
 fi
