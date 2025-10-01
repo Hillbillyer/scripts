@@ -169,5 +169,15 @@ if [[ "$selected_major" == "$current_major" ]]; then
 else
   print -P "%F{cyan}Major upgrade to $selected_version...%f"
   sudo softwareupdate --fetch-full-installer --full-installer-version "$selected_version"
-  sudo "/Applications/Install macOS"*/Contents/Resources/startosinstall --agreetolicense --nointeraction --rebootdelay 10 --forcequitapps --user dadmin --passprompt
+
+  installer_app=$(ls -1t /Applications/Install\ macOS*.app | head -n1)
+  if [[ -z "$installer_app" ]]; then
+    print -P "%F{red}Installer not found after fetch.%f"
+    exit 1
+  fi
+
+  # Headless, safe: prompts at terminal for the admin password
+  sudo "$installer_app/Contents/Resources/startosinstall" \
+    --agreetolicense --nointeraction --rebootdelay 10 --forcequitapps \
+    --user dadmin --passprompt
 fi
