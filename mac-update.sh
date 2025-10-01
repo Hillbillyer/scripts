@@ -215,8 +215,7 @@ current_major="${${(s/./)current_version}[1]}"
 
 if [[ "$selected_major" == "$current_major" ]]; then
   print -P "%F{green}Minor/point update to $selected_version...%f"
-  # Uncomment to perform minor update:
-  # sudo /usr/sbin/softwareupdate --install --all --force --restart
+  sudo /usr/sbin/softwareupdate --install --all --force --restart
 else
   print -P "%F{cyan}Major upgrade to $selected_version...%f"
 
