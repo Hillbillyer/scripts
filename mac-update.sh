@@ -169,5 +169,5 @@ if [[ "$selected_major" == "$current_major" ]]; then
 else
   print -P "%F{cyan}Major upgrade to $selected_version...%f"
   sudo softwareupdate --fetch-full-installer --full-installer-version "$selected_version"
-  sudo "/Applications/Install macOS"*/Contents/Resources/startosinstall --agreetolicense --nointeraction --rebootdelay 10 --forcequitapps
+  sudo "/Applications/Install macOS"*/Contents/Resources/startosinstall --agreetolicense --nointeraction --rebootdelay 10 --forcequitapps --user dadmin --passprompt
 fi
