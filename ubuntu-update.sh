@@ -7,6 +7,8 @@ ERRFILE=$(mktemp)
 UPGRADES_TMP=$(mktemp)
 NTFY_TOPIC="https://ntfy.hillbillyer.dev/machine-updates"
 HOSTNAME=$(hostname)
+touch $HOME/hillbillyer/custom-commands.sh
+CUSTOM_SCRIPT="$HOME/hillbillyer/custom-commands.sh"
 
 # Logging start
 {
@@ -28,19 +30,41 @@ echo "Will upgrade: ${UPGRADES:-<none>}" >> "$LOGFILE"
     apt clean
 } >> "$LOGFILE" 2>>"$ERRFILE"
 
+APT_SUCCESS=$?
+
+# Custom Commands Section
+CUSTOM_SUCCESS=0
+CUSTOM_OUTPUT=""
+
+if [ -f "$CUSTOM_SCRIPT" ]; then
+    echo "Running custom update script: $CUSTOM_SCRIPT" >> "$LOGFILE"
+    CUSTOM_OUTPUT=$(bash "$CUSTOM_SCRIPT" 2>&1)
+    CUSTOM_SUCCESS=$?
+    {
+        echo "Custom script output:"
+        echo "$CUSTOM_OUTPUT"
+    } >> "$LOGFILE"
+fi
+
 # Compose NTFY message
-if [ $? -eq 0 ]; then
+if [ $APT_SUCCESS -eq 0 ] && [ $CUSTOM_SUCCESS -eq 0 ]; then
     if [ -n "$UPGRADES" ]; then
         MESSAGE="✅ $HOSTNAME updated successfully. Updated: $UPGRADES"
     else
         MESSAGE="✅ $HOSTNAME updated successfully. No packages were updated."
     fi
-    curl -s -X POST -H "Title: Server Update" -d "$MESSAGE" "$NTFY_TOPIC" >/dev/null
-else
+    if [ -f "$CUSTOM_SCRIPT" ]; then
+        MESSAGE="$MESSAGE (Custom script ran successfully.)"
+    fi
+elif [ $APT_SUCCESS -ne 0 ]; then
     ERROR_MSG=$(<"$ERRFILE")
-    MESSAGE="❌ $HOSTNAME update failed: $ERROR_MSG"
-    curl -s -X POST -H "Title: Server Update" -d "$MESSAGE" "$NTFY_TOPIC" >/dev/null
+    MESSAGE="❌ $HOSTNAME apt update/upgrade failed: $ERROR_MSG"
+elif [ $CUSTOM_SUCCESS -ne 0 ]; then
+    MESSAGE="❌ $HOSTNAME custom update script failed."
 fi
+
+# Send notification
+curl -s -X POST -H "Title: Server Update" -d "$MESSAGE" "$NTFY_TOPIC" >/dev/null
 
 # Append result to log
 {
