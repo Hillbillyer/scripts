@@ -103,7 +103,7 @@ bash $HOME/hillbillyer/health-check/health-check.sh
 # ==============================
 
 UPDATE_JOB="0 3 * * * /usr/bin/bash $UPDATE_PATH # HILLBILLYER_UPDATE"
-HEALTH_JOB="*/5 * * * * /usr/bin/bash $HEALTH_PATH # HILLBILLYER_HEALTH"
+HEALTH_JOB="0/5 * * * * /usr/bin/bash $HEALTH_PATH # HILLBILLYER_HEALTH"
 
 TMP_FILE=$(mktemp)
 
