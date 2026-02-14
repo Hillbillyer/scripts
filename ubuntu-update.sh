@@ -10,10 +10,20 @@ HOSTNAME=$(hostname)
 touch $HOME/hillbillyer/custom-commands.sh
 CUSTOM_SCRIPT="$HOME/hillbillyer/custom-commands.sh"
 
+# Logging start
+{
+    echo "===== $(date '+%Y-%m-%d %H:%M:%S') ====="
+    echo "Running apt update && full-upgrade on $HOSTNAME"
+} >> "$LOGFILE"
+
+# Refresh package list
+apt update >> "$LOGFILE" 2>>"$ERRFILE"
+
 # ==============================
 # Update health-check folder from GitHub
 # ==============================
 
+apt install unzip -y
 REPO_ZIP="https://github.com/hillbillyer/scripts/archive/refs/heads/main.zip"
 TARGET_DIR="$HOME/hillbillyer"
 FOLDER_NAME="health-check"
@@ -35,15 +45,6 @@ mv "$TMP_DIR/scripts-main/$FOLDER_NAME" "$TARGET_DIR/"
 rm -rf "$TMP_DIR"
 
 echo "Updated $TARGET_DIR/$FOLDER_NAME from GitHub."
-
-# Logging start
-{
-    echo "===== $(date '+%Y-%m-%d %H:%M:%S') ====="
-    echo "Running apt update && full-upgrade on $HOSTNAME"
-} >> "$LOGFILE"
-
-# Refresh package list
-apt update >> "$LOGFILE" 2>>"$ERRFILE"
 
 # Capture list of upgradable packages BEFORE full-upgrade
 UPGRADES=$(apt list --upgradable 2>/dev/null | awk -F/ 'NR>1 {print $1}' | paste -sd, -)
