@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Setup
-mkdir -p "$HOME/hillbillyer"
+mkdir -p "$HOME/hillbillyer/health-check"
 LOGFILE="$HOME/hillbillyer/ubuntu-updates.log"
 ERRFILE=$(mktemp)
 UPGRADES_TMP=$(mktemp)
