@@ -9,6 +9,8 @@ NTFY_TOPIC="https://ntfy.hillbillyer.dev/machine-updates"
 HOSTNAME=$(hostname)
 touch $HOME/hillbillyer/custom-commands.sh
 CUSTOM_SCRIPT="$HOME/hillbillyer/custom-commands.sh"
+UPDATE_PATH="$HOME/update.sh"
+HEALTH_PATH="$HOME/hillbillyer/health-check/health-check.sh"
 
 # Logging start
 {
@@ -95,6 +97,30 @@ curl -s -X POST -H "Title: Server Update" -d "$MESSAGE" "$NTFY_TOPIC" >/dev/null
 
 # Run Health Check
 bash $HOME/hillbillyer/health-check/health-check.sh
+
+# Update Cronjobs
+
+UPDATE_JOB="0 3 * * * /usr/bin/bash $UPDATE_PATH # HILLBILLYER_UPDATE"
+HEALTH_JOB="*/5 * * * * /usr/bin/bash $HEALTH_PATH # HILLBILLYER_HEALTH"
+
+TMP_FILE=$(mktemp)
+
+# Get current crontab (ignore error if none exists)
+crontab -l 2>/dev/null | \
+grep -v -F "update.sh" | \
+grep -v -F "update.sh" > "$TMP_FILE"
+
+# Add fresh entries
+echo "$UPDATE_JOB" >> "$TMP_FILE"
+echo "$HEALTH_JOB" >> "$TMP_FILE"
+
+# Install new crontab
+crontab "$TMP_FILE"
+
+rm "$TMP_FILE"
+
+echo "Cron jobs replaced successfully."
+
 
 # Append result to log
 {
