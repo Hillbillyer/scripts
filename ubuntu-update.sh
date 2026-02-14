@@ -108,7 +108,7 @@ TMP_FILE=$(mktemp)
 # Get current crontab (ignore error if none exists)
 crontab -l 2>/dev/null | \
 grep -v -F "update.sh" | \
-grep -v -F "update.sh" > "$TMP_FILE"
+grep -v -F "health-check.sh" > "$TMP_FILE"
 
 # Add fresh entries
 echo "$UPDATE_JOB" >> "$TMP_FILE"
