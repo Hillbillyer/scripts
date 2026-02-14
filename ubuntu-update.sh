@@ -98,29 +98,30 @@ curl -s -X POST -H "Title: Server Update" -d "$MESSAGE" "$NTFY_TOPIC" >/dev/null
 # Run Health Check
 bash $HOME/hillbillyer/health-check/health-check.sh
 
-# Update Cronjobs
+# ==============================
+# Update Cron Jobs (Tagged Only)
+# ==============================
 
 UPDATE_JOB="0 3 * * * /usr/bin/bash $UPDATE_PATH # HILLBILLYER_UPDATE"
 HEALTH_JOB="*/5 * * * * /usr/bin/bash $HEALTH_PATH # HILLBILLYER_HEALTH"
 
 TMP_FILE=$(mktemp)
 
-# Get current crontab (ignore error if none exists)
+# Remove only our tagged jobs (leave everything else untouched)
 crontab -l 2>/dev/null | \
-grep -v -F "update.sh" | \
-grep -v -F "health-check.sh" > "$TMP_FILE"
+grep -v "# HILLBILLYER_UPDATE" | \
+grep -v "# HILLBILLYER_HEALTH" > "$TMP_FILE"
 
-# Add fresh entries
+# Add fresh tagged entries
 echo "$UPDATE_JOB" >> "$TMP_FILE"
 echo "$HEALTH_JOB" >> "$TMP_FILE"
 
-# Install new crontab
+# Install updated crontab
 crontab "$TMP_FILE"
 
 rm "$TMP_FILE"
 
-echo "Cron jobs replaced successfully."
-
+echo "Cron jobs replaced successfully." >> "$LOGFILE"
 
 # Append result to log
 {
