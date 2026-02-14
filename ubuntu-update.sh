@@ -10,6 +10,32 @@ HOSTNAME=$(hostname)
 touch $HOME/hillbillyer/custom-commands.sh
 CUSTOM_SCRIPT="$HOME/hillbillyer/custom-commands.sh"
 
+# ==============================
+# Update health-check folder from GitHub
+# ==============================
+
+REPO_ZIP="https://github.com/hillbillyer/scripts/archive/refs/heads/main.zip"
+TARGET_DIR="$HOME/hillbillyer"
+FOLDER_NAME="health-check"
+TMP_DIR=$(mktemp -d)
+
+# Download the repo ZIP into a temporary folder
+curl -L -o "$TMP_DIR/repo.zip" "$REPO_ZIP"
+
+# Extract only the health-check folder from the ZIP
+unzip -q "$TMP_DIR/repo.zip" "scripts-main/$FOLDER_NAME/*" -d "$TMP_DIR"
+
+# Remove existing health-check folder on the server
+rm -rf "$TARGET_DIR/$FOLDER_NAME"
+
+# Move the new health-check folder into place
+mv "$TMP_DIR/scripts-main/$FOLDER_NAME" "$TARGET_DIR/"
+
+# Clean up temp folder
+rm -rf "$TMP_DIR"
+
+echo "Updated $TARGET_DIR/$FOLDER_NAME from GitHub."
+
 # Logging start
 {
     echo "===== $(date '+%Y-%m-%d %H:%M:%S') ====="
