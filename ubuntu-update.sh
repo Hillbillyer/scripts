@@ -93,6 +93,9 @@ fi
 # Send notification
 curl -s -X POST -H "Title: Server Update" -d "$MESSAGE" "$NTFY_TOPIC" >/dev/null
 
+# Run Health Check
+bash $HOME/hillbillyer/health-check/health-check.sh
+
 # Append result to log
 {
     echo "$MESSAGE"
