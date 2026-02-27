@@ -122,16 +122,6 @@ rm "$TMP_FILE"
 
 echo "Cron jobs replaced successfully." >> "$LOGFILE"
 
-# ==============================
-# Update local bootstrap script to new Gitea URL
-# ==============================
-
-cat > /root/update.sh <<'EOF'
-#!/bin/bash
-curl -fsSL "https://code.hillbillyer.dev/Hillbillyer/ubuntu-scripts/raw/branch/main/ubuntu-update.sh" | bash
-EOF
-chmod +x /root/update.sh
-
 # Append result to log
 {
     echo "$MESSAGE"
