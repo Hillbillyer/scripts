@@ -11,6 +11,10 @@ touch $HOME/hillbillyer/custom-commands.sh
 CUSTOM_SCRIPT="$HOME/hillbillyer/custom-commands.sh"
 UPDATE_PATH="$HOME/update.sh"
 HEALTH_PATH="$HOME/hillbillyer/health-check/health-check.sh"
+UPDATE_JOB="0 3 * * * /usr/bin/bash $UPDATE_PATH # HILLBILLYER_UPDATE"
+HEALTH_JOB="*/5 * * * * /usr/bin/bash $HEALTH_PATH # HILLBILLYER_HEALTH"
+UPDATE_URL="https://code.hillbillyer.dev/Hillbillyer/ubuntu-scripts/raw/branch/main/ubuntu-update.sh"
+UPDATE_PATH="$HOME/ubuntu-update.sh"
 
 # Logging start
 {
@@ -102,9 +106,6 @@ bash $HOME/hillbillyer/health-check/health-check.sh
 # Update Cron Jobs (Tagged Only)
 # ==============================
 
-UPDATE_JOB="0 3 * * * /usr/bin/bash $UPDATE_PATH # HILLBILLYER_UPDATE"
-HEALTH_JOB="*/5 * * * * /usr/bin/bash $HEALTH_PATH # HILLBILLYER_HEALTH"
-
 TMP_FILE=$(mktemp)
 
 # Remove only our tagged jobs (leave everything else untouched)
@@ -122,6 +123,30 @@ crontab "$TMP_FILE"
 rm "$TMP_FILE"
 
 echo "Cron jobs replaced successfully." >> "$LOGFILE"
+
+# ==============================
+# Self-update (install latest script for next run)
+# ==============================
+
+SELF_TMP=$(mktemp)
+
+if curl -fsSL "$UPDATE_URL" -o "$SELF_TMP"; then
+    # Basic sanity checks so we don't overwrite with HTML/login page/etc
+    if head -n 1 "$SELF_TMP" | grep -q '^#!/bin/bash' && grep -q 'HILLBILLYER_UPDATE' "$SELF_TMP"; then
+        # Only replace if different (avoids touching mtime every run)
+        if [ ! -f "$UPDATE_PATH" ] || ! cmp -s "$SELF_TMP" "$UPDATE_PATH"; then
+            install -m 700 "$SELF_TMP" "$UPDATE_PATH"
+            echo "Self-updated $UPDATE_PATH from $UPDATE_URL" >> "$LOGFILE"
+        fi
+    else
+        echo "Self-update skipped: downloaded file failed sanity checks (not overwriting)." >> "$LOGFILE"
+    fi
+else
+    echo "Self-update skipped: failed to download $UPDATE_URL" >> "$LOGFILE"
+fi
+
+rm -f "$SELF_TMP"
+
 
 # Append result to log
 {
