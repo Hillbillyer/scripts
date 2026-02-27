@@ -13,8 +13,7 @@ UPDATE_PATH="$HOME/update.sh"
 HEALTH_PATH="$HOME/hillbillyer/health-check/health-check.sh"
 UPDATE_JOB="0 3 * * * /usr/bin/bash $UPDATE_PATH # HILLBILLYER_UPDATE"
 HEALTH_JOB="*/5 * * * * /usr/bin/bash $HEALTH_PATH # HILLBILLYER_HEALTH"
-UPDATE_URL="https://code.hillbillyer.dev/Hillbillyer/ubuntu-scripts/raw/branch/main/ubuntu-update.sh"
-UPDATE_PATH="$HOME/ubuntu-update.sh"
+BOOTSTRAP_PATH="$HOME/update.sh"
 
 # Logging start
 {
@@ -125,27 +124,17 @@ rm "$TMP_FILE"
 echo "Cron jobs replaced successfully." >> "$LOGFILE"
 
 # ==============================
-# Self-update (install latest script for next run)
+# Update local bootstrap script to new Gitea URL
 # ==============================
 
-SELF_TMP=$(mktemp)
+cat > "$BOOTSTRAP_PATH" << 'EOF'
+#!/bin/bash
 
-if curl -fsSL "$UPDATE_URL" -o "$SELF_TMP"; then
-    # Basic sanity checks so we don't overwrite with HTML/login page/etc
-    if head -n 1 "$SELF_TMP" | grep -q '^#!/bin/bash' && grep -q 'HILLBILLYER_UPDATE' "$SELF_TMP"; then
-        # Only replace if different (avoids touching mtime every run)
-        if [ ! -f "$UPDATE_PATH" ] || ! cmp -s "$SELF_TMP" "$UPDATE_PATH"; then
-            install -m 700 "$SELF_TMP" "$UPDATE_PATH"
-            echo "Self-updated $UPDATE_PATH from $UPDATE_URL" >> "$LOGFILE"
-        fi
-    else
-        echo "Self-update skipped: downloaded file failed sanity checks (not overwriting)." >> "$LOGFILE"
-    fi
-else
-    echo "Self-update skipped: failed to download $UPDATE_URL" >> "$LOGFILE"
-fi
+bash <(curl -fsSL https://code.hillbillyer.dev/Hillbillyer/ubuntu-scripts/raw/branch/main/ubuntu-update.sh)
+EOF
 
-rm -f "$SELF_TMP"
+chmod +x "$BOOTSTRAP_PATH"
+echo "Bootstrap script updated to use Gitea URL." >> "$LOGFILE"
 
 
 # Append result to log
