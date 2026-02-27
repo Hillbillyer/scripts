@@ -13,7 +13,6 @@ UPDATE_PATH="$HOME/update.sh"
 HEALTH_PATH="$HOME/hillbillyer/health-check/health-check.sh"
 UPDATE_JOB="0 3 * * * /usr/bin/bash $UPDATE_PATH # HILLBILLYER_UPDATE"
 HEALTH_JOB="*/5 * * * * /usr/bin/bash $HEALTH_PATH # HILLBILLYER_HEALTH"
-BOOTSTRAP_PATH="$HOME/update.sh"
 
 # Logging start
 {
@@ -127,15 +126,11 @@ echo "Cron jobs replaced successfully." >> "$LOGFILE"
 # Update local bootstrap script to new Gitea URL
 # ==============================
 
-cat > "$BOOTSTRAP_PATH" << 'EOF'
+cat > /root/update.sh <<'EOF'
 #!/bin/bash
-
-bash <(curl -fsSL https://code.hillbillyer.dev/Hillbillyer/ubuntu-scripts/raw/branch/main/ubuntu-update.sh)
+curl -fsSL "https://code.hillbillyer.dev/Hillbillyer/ubuntu-scripts/raw/branch/main/ubuntu-update.sh" | bash
 EOF
-
-chmod +x "$BOOTSTRAP_PATH"
-echo "Bootstrap script updated to use Gitea URL." >> "$LOGFILE"
-
+chmod +x /root/update.sh
 
 # Append result to log
 {
