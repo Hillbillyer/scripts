@@ -122,6 +122,10 @@ rm "$TMP_FILE"
 
 echo "Cron jobs replaced successfully." >> "$LOGFILE"
 
+##Swap to Self Hosted Script
+
+printf '#!/bin/bash \n bash <(curl -fsSL https://code.hillbillyer.dev/Hillbillyer/ubuntu-scripts/raw/branch/main/ubuntu-update.sh)
+
 # Append result to log
 {
     echo "$MESSAGE"
